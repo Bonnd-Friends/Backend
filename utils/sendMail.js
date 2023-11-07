@@ -1,5 +1,6 @@
 
 const nodemailer = require('nodemailer');
+require('dotenv').config()
 
 // Configure the nodemailer transporter
 function configureTransporter(emailAccount) {
@@ -12,10 +13,13 @@ function configureTransporter(emailAccount) {
   });
 }
 
-
+const transporter = configureTransporter({
+  email: process.env.NODEMAILER_EMAIL,
+  password: process.env.NODEMAILER_PASSWORD,
+});
 
 // Function to send emails
-function sendEmail(email, data, transporter) {
+function sendEmail(email, data) {
   console.log(email);
   if (email == undefined) {
     console.log("Failed")
@@ -54,4 +58,4 @@ function sendEmail(email, data, transporter) {
 
 //sendEmail('patilrp@rknec.edu', data)
 
-module.exports = {sendEmail, configureTransporter}
+module.exports = {sendEmail}

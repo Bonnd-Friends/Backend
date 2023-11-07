@@ -28,19 +28,21 @@ mongoose.connect(CONNECTION_URL).then((result) => {
 
 
 //   Model declarations
-const emailRegistration = require("./models/emailRegistration");
+const UserRegistration = require("./models/UserRegistration");
 
 //   Middleware declarations
-const isAuthenticated = require('./middlewares/authMiddleware');
+const {isAuthenticated} = require('./middlewares/authMiddleware');
 
 
 //    Routes declarations
 const login = require("./routes/login");
+const profile = require("./routes/profile");
 
 
 
 
 app.use('/auth', login);
+app.use('/profile', profile);
 
 
 

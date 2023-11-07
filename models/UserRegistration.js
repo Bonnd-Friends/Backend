@@ -1,10 +1,11 @@
 const mongoose = require('mongoose');
 
 // Define the email registration schema
-const emailRegistrationSchema = new mongoose.Schema({
+const userRegistrationSchema = new mongoose.Schema({
   username: {
     type: String,
     required: true,
+    unique:true
   },
   otp: {
     type: Number,
@@ -25,7 +26,7 @@ const emailRegistrationSchema = new mongoose.Schema({
   password: {
     type: String,
     required: true,
-    minlength: 6,
+    minlength: 8,
   },
   createdAt: {
     type: Date,
@@ -34,7 +35,7 @@ const emailRegistrationSchema = new mongoose.Schema({
 });
 
 // Create the EmailRegistration model using the schema
-const EmailRegistration = mongoose.model('users', emailRegistrationSchema);
+const UserRegistration = mongoose.model('users', userRegistrationSchema);
 
 // Export the EmailRegistration model
-module.exports = EmailRegistration;
+module.exports = UserRegistration;

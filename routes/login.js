@@ -2,17 +2,13 @@
 var express = require("express");
 var router = express.Router();
 const jwt = require('jsonwebtoken')
-const EmailRegistration = require("./../models/emailRegistration");
-const isAuthenticated = require('../middlewares/authMiddleware');
+const UserRegistration = require("../models/UserRegistration");
+const {isAuthenticated} = require('../middlewares/authMiddleware');
 const crypto = require("crypto")
-const {sendEmail, configureTransporter} = require("../utils/sendMail");
+const {sendEmail} = require("../utils/sendMail");
 
 let algorithm = "sha256"
 
-const transporter = configureTransporter({
-    email: process.env.NODEMAILER_EMAIL,
-    password: process.env.NODEMAILER_PASSWORD,
-});
 
 
 router.get("/get-login", (req, res)=>{
@@ -81,7 +77,7 @@ router.post('/register', (req, res) => {
 
     if (password == confirmPassword){
         const digest = crypto.createHash(algorithm).update(password).digest('hex')
-        const newuser= new EmailRegistration({
+        const newuser= new UserRegistration({
             username: username,
             email: email,
             password: digest,
@@ -94,7 +90,7 @@ router.post('/register', (req, res) => {
           })
           .catch((err) =>{
             console.log(err);
-            res.send(err)
+            res.send("Username Already exists")
           });
     }
     else{
@@ -122,19 +118,19 @@ router.get('/user', isAuthenticated, (req, res)=>{
 
 router.post('/generate-otp', async(req, res)=>{
     const { username } = req.body;
-
+    
     const otp = Math.floor(Math.random() * (9999 - 0 + 1)) + 0;
 
     try {
-        const result = await EmailRegistration.findOneAndUpdate({"username":username}, {"otp":otp});
-        sendEmail(result.email, {username:username, otp:otp}, transporter)
+        const result = await UserRegistration.findOneAndUpdate({"username":username}, {"otp":otp});
+        sendEmail(result.email, {username:username, otp:otp})
     } catch (error) {
         res.redirect('/auth/get-register')
     }
     
     const interval = setInterval(async()=>{
         try{
-            const updatedResult = await EmailRegistration.findOneAndUpdate({"username":username}, {$unset:{"otp":otp}});
+            const updatedResult = await UserRegistration.findOneAndUpdate({"username":username}, {$unset:{"otp":otp}});
         }
         catch(e){
             console.log(e)
@@ -147,9 +143,9 @@ router.post('/verify-otp', async(req, res)=>{
     const { username, otp } = req.body;
 
     try{
-        const result = await EmailRegistration.findOne({"username":username});
+        const result = await UserRegistration.findOne({"username":username});
         if(Number(otp) == Number(result.otp)){
-            const updatedResult = await EmailRegistration.findOneAndUpdate({"username":username}, {$unset:{"otp":result.otp}});
+            const updatedResult = await UserRegistration.findOneAndUpdate({"username":username}, {$unset:{"otp":result.otp}});
             const payload = {username: username}
             const token = jwt.sign(payload, process.env.JWT_ACCESS_KEY)
             res.cookie('token', token, { httpOnly: true });
@@ -168,14 +164,15 @@ router.post('/verify-otp', async(req, res)=>{
 })
 
 router.post('/reset', isAuthenticated, async(req, res)=>{
-    const { password, confirmPassword, username, email } = req.body;
+    const { password, confirmPassword, email } = req.body;
+    const username = req.username
     // Complete this Function for reseting the password of the account
     try{
-        const result = await EmailRegistration.findOne({"username":username});
+        const result = await UserRegistration.findOne({"username":username});
         if (password == confirmPassword){
             const digest = crypto.createHash(algorithm).update(password).digest('hex')
             
-            const result = await EmailRegistration.findOneAndUpdate({"username":username}, {"email":email, "username":username, "password":digest});
+            const result = await UserRegistration.findOneAndUpdate({"username":username}, {"email":email, "username":username, "password":digest});
             res.send("Password Updated successfully")
         }
         else{
@@ -196,9 +193,10 @@ router.post('/login', async(req, res) => {
     
 
     const digest = crypto.createHash(algorithm).update(password).digest('hex')
-    const result = await EmailRegistration.findOne({"username":username});
+    const result = await UserRegistration.findOne({"username":username});
+
     try{
-        if (username==result.email && digest==result.password){
+        if (String(username)==String(result.username) && String(digest)==String(result.password)){
             //  Added jwt token in login
             //  Not added in register
             //  Also not added in middleware
@@ -209,6 +207,7 @@ router.post('/login', async(req, res) => {
         }
     
         else{
+            
             res.status(401).json({ message: 'Unauthorized' });
         }
     }

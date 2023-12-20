@@ -14,7 +14,7 @@ let algorithm = "sha256"
 router.get("/get-login", (req, res)=>{
     res.send(`
     <form method="POST" action="/auth/login">
-        <input type="text" placeholder="username" name="username">
+        <input type="email" placeholder="username" name="email">
         <input type="text" placeholder="password" name="password">
         <input type="submit">Submit</input>
     </form>
@@ -52,7 +52,7 @@ router.get("/get-reset", (req, res)=>{
 router.get("/get-otp", (req, res)=>{
     res.send(`
         <form method="POST" action="/auth/generate-otp">
-        <input type="text" placeholder="User name" name="username" required>
+        <input type="email" placeholder="User name" name="email" required>
         <input type="submit" value="Submit">
     </form>
     `)
@@ -62,7 +62,7 @@ router.get("/get-otp", (req, res)=>{
 router.get("/verify-otp", (req, res)=>{
     res.send(`
         <form method="POST" action="/auth/verify-otp">
-        <input type="text" placeholder="User name" name="username" required>
+        <input type="email" placeholder="User name" name="email" required>
         <input type="number" placeholder="OTP" name="otp" required>
         <input type="submit" value="Submit">
     </form>
@@ -117,20 +117,20 @@ router.get('/user', isAuthenticated, (req, res)=>{
 
 
 router.post('/generate-otp', async(req, res)=>{
-    const { username } = req.body;
+    const { email } = req.body;
     
     const otp = Math.floor(Math.random() * (9999 - 0 + 1)) + 0;
 
     try {
-        const result = await UserRegistration.findOneAndUpdate({"username":username}, {"otp":otp});
-        sendEmail(result.email, {username:username, otp:otp})
+        const result = await UserRegistration.findOneAndUpdate({"email":email}, {"otp":otp});
+        sendEmail(result.email, {username:result.username, otp:otp})
     } catch (error) {
         res.redirect('/auth/get-register')
     }
     
     const interval = setInterval(async()=>{
         try{
-            const updatedResult = await UserRegistration.findOneAndUpdate({"username":username}, {$unset:{"otp":otp}});
+            const updatedResult = await UserRegistration.findOneAndUpdate({"email":email}, {$unset:{"otp":otp}});
         }
         catch(e){
             console.log(e)
@@ -140,13 +140,13 @@ router.post('/generate-otp', async(req, res)=>{
 })
 
 router.post('/verify-otp', async(req, res)=>{
-    const { username, otp } = req.body;
+    const { email, otp } = req.body;
 
     try{
-        const result = await UserRegistration.findOne({"username":username});
+        const result = await UserRegistration.findOne({"email":email});
         if(Number(otp) == Number(result.otp)){
-            const updatedResult = await UserRegistration.findOneAndUpdate({"username":username}, {$unset:{"otp":result.otp}});
-            const payload = {username: username}
+            const updatedResult = await UserRegistration.findOneAndUpdate({"email":email}, {$unset:{"otp":result.otp}});
+            const payload = {username: result.username}
             const token = jwt.sign(payload, process.env.JWT_ACCESS_KEY)
             res.cookie('token', token, { httpOnly: true });
             res.send("Login successful").status(200)
@@ -189,18 +189,18 @@ router.post('/reset', isAuthenticated, async(req, res)=>{
 
 router.post('/login', async(req, res) => {
     // Perform authentication logic, e.g., validate credentials
-    const { username, password } = req.body;
+    const { email, password } = req.body;
     
 
     const digest = crypto.createHash(algorithm).update(password).digest('hex')
-    const result = await UserRegistration.findOne({"username":username});
+    const result = await UserRegistration.findOne({"email":email});
 
     try{
-        if (String(username)==String(result.username) && String(digest)==String(result.password)){
+        if (String(email)==String(result.email) && String(digest)==String(result.password)){
             //  Added jwt token in login
             //  Not added in register
             //  Also not added in middleware
-            const payload = {username: username}
+            const payload = {username: result.username}
             const token = jwt.sign(payload, process.env.JWT_ACCESS_KEY)
             res.cookie('token', token, { httpOnly: true });
             res.send("Login successful").status(200)

@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
-const Match = require('../models/matchesData');
-const Notification = require('../models/notification');
+const Match = require('../models/Match');
+const Notification = require('../models/Notification');
 const { isAuthenticated } = require('../middlewares/authMiddleware');
 
 router.post('/like', isAuthenticated, async (req, res) => {
@@ -75,8 +75,8 @@ async function check_match(username, likedUsername) {
 }
 
 // Get Liked Users
-router.get('/likedUsers', isAuthenticated, async (req, res) => {
-  const username = req.username;
+router.get('/likedUsers',  async (req, res) => {
+  const username = 'nishantthakre';
 
   try {
     // Find the user by their username
@@ -94,8 +94,8 @@ router.get('/likedUsers', isAuthenticated, async (req, res) => {
 });
 
 // Get Matched Users
-router.get('/matchedUsers', isAuthenticated, async (req, res) => {
-  const username = req.username;
+router.get('/matchedUsers', async (req, res) => {
+  const username = 'nishantthakre';
   console.log(username)
 
   try {

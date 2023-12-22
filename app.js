@@ -37,12 +37,14 @@ const {isAuthenticated} = require('./middlewares/authMiddleware');
 //    Routes declarations
 const login = require("./routes/login");
 const profile = require("./routes/profile");
+const matches = require("./routes/matches");
 
 
 
 
 app.use('/auth', login);
 app.use('/profile', profile);
+app.use('/matches', matches);
 
 
 

@@ -14,7 +14,7 @@ let algorithm = "sha256"
 router.get("/get-login", (req, res)=>{
     res.send(`
     <form method="POST" action="/auth/login">
-        <input type="email" placeholder="username" name="email">
+        <input type="email" placeholder="email" name="email">
         <input type="text" placeholder="password" name="password">
         <input type="submit">Submit</input>
     </form>
@@ -86,7 +86,7 @@ router.post('/register', (req, res) => {
         
           newuser.save()
             .then((result)=>{
-            res.redirect("/auth/login")
+            res.status(200).send("Successful")
           })
           .catch((err) =>{
             console.log(err);
@@ -202,7 +202,7 @@ router.post('/login', async(req, res) => {
             //  Also not added in middleware
             const payload = {username: result.username}
             const token = jwt.sign(payload, process.env.JWT_ACCESS_KEY)
-            res.cookie('token', token, { httpOnly: true });
+            res.cookie('token', token);
             res.send("Login successful").status(200)
         }
     

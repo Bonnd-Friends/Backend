@@ -3,15 +3,18 @@ const router = express.Router();
 const Match = require('../models/Match');
 const Notification = require('../models/Notification');
 const { isAuthenticated } = require('../middlewares/authMiddleware');
+const UserRegistration = require('../models/UserRegistration');
 
 router.post('/like', isAuthenticated, async (req, res) => {
   const { likedUsername } = req.body;
   const username = req.username;
-  console.log(username, likedUsername)
+  const userId = await UserRegistration.findOne({username:username})._id
+  const likedId = await UserRegistration.findOne({username:likedUsername})._id
+  console.log({username:userId}, {likedUsername:likedId})
   try {
     const result = await Match.findOneAndUpdate(
-      { username },
-      { $push: { likedUsers: likedUsername } }
+      { _id:userId },
+      { $push: { likedUsers: likedId } }
     );
 
     if (!result) {
@@ -19,33 +22,33 @@ router.post('/like', isAuthenticated, async (req, res) => {
     }
 
     // Check if it's a match
-    const isMatch = await check_match(username, likedUsername);
+    const isMatch = await check_match(userId, likedId);
 
     if (isMatch) {
       // Both users like each other
       // Handle match logic
       await Match.findOneAndUpdate(
-        { username },
-        { $push: { matches: likedUsername } }
+        { _id:userId },
+        { $push: { matches: likedId } }
       );
 
       await Match.findOneAndUpdate(
-        { username: likedUsername },
-        { $push: { matches: username } }
+        { _id: likedId },
+        { $push: { matches: userId } }
       );
 
       // Remove users from likedUsers arrays and notificationArray
       await Match.updateMany(
-        { username: { $in: [username, likedUsername] } },
+        { _id: { $in: [userId, likedId] } },
         {
-          $pull: { likedUsers: { $in: [username, likedUsername] } },
+          $pull: { likedUsers: { $in: [userId, likedId] } },
         }
       );
 
       await Notification.updateMany(
-        { username: { $in: [username, likedUsername] } },
+        { _id: { $in: [userId, likedId] } },
         {
-          $pull: { notificationArray: { $in: [username, likedUsername] } },
+          $pull: { notificationArray: { $in: [userId, likedId] } },
         }
       )
 
@@ -53,7 +56,7 @@ router.post('/like', isAuthenticated, async (req, res) => {
     } else {
       // It's not a match, add User1 to User2's notification array
       await Notification.findOneAndUpdate(
-        { username: likedUsername },
+        { _id: likedId },
         { $push: { notificationArray: `${username} liked you!` } }
       );
 
@@ -65,9 +68,9 @@ router.post('/like', isAuthenticated, async (req, res) => {
 });
 
 // Function to check if it's a match
-async function check_match(username, likedUsername) {
+async function check_match(userId, likedId) {
   try {
-    const likedUser = await Match.findOne({ username: likedUsername, likedUsers: username });
+    const likedUser = await Match.findOne({ _id: likedId, likedUsers: userId });
     return !!likedUser;
   } catch (err) {
     return false;
@@ -80,7 +83,8 @@ router.get('/likedUsers',  async (req, res) => {
 
   try {
     // Find the user by their username
-    const user = await Match.findOne({ username });
+    const userId = await UserRegistration.findOne({username:username})._id
+    const user = await Match.findOne({ username:userId });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -100,7 +104,8 @@ router.get('/matchedUsers', async (req, res) => {
 
   try {
     // Find the user by their username
-    const user = await Match.findOne({ username });
+    const userId = await UserRegistration.findOne({username:username})._id
+    const user = await Match.findOne({ username:userId });
 
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -119,7 +124,8 @@ router.get('/notifications', isAuthenticated, async (req, res) => {
 
   try {
     // Find the user's notifications by their username
-    const userNotifications = await Notification.findOne({ username });
+    const userId = await UserRegistration.findOne({username:username})._id
+    const userNotifications = await Notification.findOne({ username:userId });
 
     if (!userNotifications) {
       return res.status(404).json({ error: 'User not found or no notifications available' });

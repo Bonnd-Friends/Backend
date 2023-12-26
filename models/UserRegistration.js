@@ -28,6 +28,14 @@ const userRegistrationSchema = new mongoose.Schema({
     required: true,
     minlength: 8,
   },
+  profileId:{
+    type: String,
+    default:null
+  },
+  matchId:{
+    type:String,
+    default:null
+  },
   createdAt: {
     type: Date,
     default: Date.now,

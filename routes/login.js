@@ -3,15 +3,16 @@ var express = require("express");
 var router = express.Router();
 const jwt = require('jsonwebtoken')
 const UserRegistration = require("../models/UserRegistration");
-const {isAuthenticated} = require('../middlewares/authMiddleware');
+const Profile = require("../models/Profile");
+const { isAuthenticated } = require('../middlewares/authMiddleware');
 const crypto = require("crypto")
-const {sendEmail} = require("../utils/sendMail");
+const { sendEmail } = require("../utils/sendMail");
 
 let algorithm = "sha256"
 
 
 
-router.get("/get-login", (req, res)=>{
+router.get("/get-login", (req, res) => {
     res.send(`
     <form method="POST" action="/auth/login">
         <input type="email" placeholder="email" name="email">
@@ -22,7 +23,7 @@ router.get("/get-login", (req, res)=>{
 })
 
 
-router.get("/get-register", (req, res)=>{
+router.get("/get-register", (req, res) => {
     res.send(`
     <form method="POST" action="/auth/register">
     <input type="text" placeholder="User name" name="username" required>
@@ -35,7 +36,7 @@ router.get("/get-register", (req, res)=>{
     `)
 })
 
-router.get("/get-reset", (req, res)=>{
+router.get("/get-reset", (req, res) => {
     res.send(`
     <form method="POST" action="/auth/reset">
     <input type="text" placeholder="User name" name="username" required>
@@ -49,7 +50,7 @@ router.get("/get-reset", (req, res)=>{
 })
 
 
-router.get("/get-otp", (req, res)=>{
+router.get("/get-otp", (req, res) => {
     res.send(`
         <form method="POST" action="/auth/generate-otp">
         <input type="email" placeholder="User name" name="email" required>
@@ -59,7 +60,7 @@ router.get("/get-otp", (req, res)=>{
 })
 
 
-router.get("/verify-otp", (req, res)=>{
+router.get("/verify-otp", (req, res) => {
     res.send(`
         <form method="POST" action="/auth/verify-otp">
         <input type="email" placeholder="User name" name="email" required>
@@ -71,157 +72,170 @@ router.get("/verify-otp", (req, res)=>{
 
 
 
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
     // Perform authentication logic, e.g., validate credentials
     const { password, confirmPassword, username, email } = req.body;
 
-    if (password == confirmPassword){
-        const digest = crypto.createHash(algorithm).update(password).digest('hex')
-        const newuser= new UserRegistration({
-            username: username,
-            email: email,
-            password: digest,
-            
-          });
+    if (password === confirmPassword) { // Use strict equality operator (===) for comparison
         
-          newuser.save()
-            .then((result)=>{
-            res.status(200).send("Successful")
-          })
-          .catch((err) =>{
-            console.log(err);
-            res.send("Username Already exists")
-          });
+
+        try {
+            const digest = crypto.createHash(algorithm).update(password).digest('hex');
+
+            const registerUser = new UserRegistration({
+                username: username,
+                email: email,
+                password: digest,
+            });
+
+            const registeredUser = await registerUser.save();
+
+            const newUser = new Profile({
+                username: username,
+                email: email ? email : '',
+            });
+
+            const savedUser = await newUser.save();
+            const user = await UserRegistration.findOneAndUpdate(
+                { username: username },
+                { profileId: savedUser._id }
+            );
+
+            const payload = { username: username }
+            const token = jwt.sign(payload, process.env.JWT_ACCESS_KEY)
+            res.cookie('token', token);
+            res.status(200).send('Successful');
+        } catch (error) {
+            console.error(error);
+            res.status(500).json({ error: 'Internal Server Error' });
+        }
+    } else {
+        res.status(401).send('Both passwords are not the same');
     }
-    else{
-        res.status(401).send("Both password are not same")
-    }
-    
-    
 });
 
-router.get('/user', isAuthenticated, (req, res)=>{
+router.get('/user', isAuthenticated, (req, res) => {
     const token = req.cookies.token;
     const resObject = {}
     jwt.verify(token, process.env.JWT_ACCESS_KEY, (err, decoded) => {
         if (err) {
-          console.error('JWT verification failed:', err.message);
-          res.status(401);
+            console.error('JWT verification failed:', err.message);
+            res.status(401);
         } else {
-          console.log('Decoded JWT payload:', decoded);
-          resObject.username = decoded.username;
+            console.log('Decoded JWT payload:', decoded);
+            resObject.username = decoded.username;
         }
-      });
+    });
     res.send(resObject)
 })
 
 
-router.post('/generate-otp', async(req, res)=>{
+router.post('/generate-otp', async (req, res) => {
     const { email } = req.body;
-    
+
     const otp = Math.floor(Math.random() * (9999 - 0 + 1)) + 0;
 
     try {
-        const result = await UserRegistration.findOneAndUpdate({"email":email}, {"otp":otp});
-        sendEmail(result.email, {username:result.username, otp:otp})
+        const result = await UserRegistration.findOneAndUpdate({ "email": email }, { "otp": otp });
+        sendEmail(result.email, { username: result.username, otp: otp })
     } catch (error) {
         res.redirect('/auth/get-register')
     }
-    
-    const interval = setInterval(async()=>{
-        try{
-            const updatedResult = await UserRegistration.findOneAndUpdate({"email":email}, {$unset:{"otp":otp}});
+
+    const interval = setInterval(async () => {
+        try {
+            const updatedResult = await UserRegistration.findOneAndUpdate({ "email": email }, { $unset: { "otp": otp } });
         }
-        catch(e){
+        catch (e) {
             console.log(e)
         }
     }, 60000)
     res.send(`OTP Sent Successfully`)
 })
 
-router.post('/verify-otp', async(req, res)=>{
+router.post('/verify-otp', async (req, res) => {
     const { email, otp } = req.body;
 
-    try{
-        const result = await UserRegistration.findOne({"email":email});
-        if(Number(otp) == Number(result.otp)){
-            const updatedResult = await UserRegistration.findOneAndUpdate({"email":email}, {$unset:{"otp":result.otp}});
-            const payload = {username: result.username}
+    try {
+        const result = await UserRegistration.findOne({ "email": email });
+        if (Number(otp) == Number(result.otp)) {
+            const updatedResult = await UserRegistration.findOneAndUpdate({ "email": email }, { $unset: { "otp": result.otp } });
+            const payload = { username: result.username }
             const token = jwt.sign(payload, process.env.JWT_ACCESS_KEY)
             res.cookie('token', token, { httpOnly: true });
             res.send("Login successful").status(200)
         }
-    
-        else{
+
+        else {
             res.status(401).json({ message: 'Unauthorized' });
         }
     }
-    catch(e){
+    catch (e) {
         console.log(e);
         res.send("Not registered yet").redirect("/auth/get-register");
     }
-    
+
 })
 
-router.post('/reset', isAuthenticated, async(req, res)=>{
+router.post('/reset', isAuthenticated, async (req, res) => {
     const { password, confirmPassword, email } = req.body;
     const username = req.username
     // Complete this Function for reseting the password of the account
-    try{
-        const result = await UserRegistration.findOne({"username":username});
-        if (password == confirmPassword){
+    try {
+        const result = await UserRegistration.findOne({ "username": username });
+        if (password == confirmPassword) {
             const digest = crypto.createHash(algorithm).update(password).digest('hex')
-            
-            const result = await UserRegistration.findOneAndUpdate({"username":username}, {"email":email, "username":username, "password":digest});
+
+            const result = await UserRegistration.findOneAndUpdate({ "username": username }, { "email": email, "username": username, "password": digest });
             res.send("Password Updated successfully")
         }
-        else{
+        else {
             res.status(401).send("Both password are not same")
         }
     }
-    catch(e){
+    catch (e) {
         console.log(e);
         res.send("Not registered yet").redirect("/auth/get-register");
     }
-    
+
 })
 
 
-router.post('/login', async(req, res) => {
+router.post('/login', async (req, res) => {
     // Perform authentication logic, e.g., validate credentials
     const { email, password } = req.body;
-    
+
 
     const digest = crypto.createHash(algorithm).update(password).digest('hex')
-    const result = await UserRegistration.findOne({"email":email});
+    const result = await UserRegistration.findOne({ "email": email });
 
-    try{
-        if (String(email)==String(result.email) && String(digest)==String(result.password)){
+    try {
+        if (String(email) == String(result.email) && String(digest) == String(result.password)) {
             //  Added jwt token in login
             //  Not added in register
             //  Also not added in middleware
-            const payload = {username: result.username}
+            const payload = { username: result.username }
             const token = jwt.sign(payload, process.env.JWT_ACCESS_KEY)
             res.cookie('token', token);
             res.send("Login successful").status(200)
         }
-    
-        else{
-            
+
+        else {
+
             res.status(401).json({ message: 'Unauthorized' });
         }
     }
-    catch(e){
+    catch (e) {
         console.log(e);
         res.send("Not registered yet").redirect("/auth/get-register");
     }
-    
+
 });
 
 
 router.get('/logout', isAuthenticated, (req, res) => {
     // Clear the token cookie
-    
+
     res.clearCookie("token")
     res.send("logout successfully")
     res.status(200)
@@ -230,4 +244,4 @@ router.get('/logout', isAuthenticated, (req, res) => {
 
 
 
-module.exports=router;
+module.exports = router;

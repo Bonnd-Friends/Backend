@@ -38,6 +38,7 @@ const {isAuthenticated} = require('./middlewares/authMiddleware');
 const login = require("./routes/login");
 const profile = require("./routes/profile");
 const matches = require("./routes/matches");
+const feed = require("./routes/feed");
 
 
 
@@ -45,6 +46,7 @@ const matches = require("./routes/matches");
 app.use('/auth', login);
 app.use('/profile', profile);
 app.use('/matches', matches);
+app.use('/feed', feed)
 
 
 

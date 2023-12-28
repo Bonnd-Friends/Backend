@@ -12,7 +12,7 @@ router.get('/', isAuthenticated, async(req, res) => {
     try{
         const user = await UserRegistration.findOne({username:username})
         const profile = await Profile.findOne({ _id: user.profileId })
-        res.json(profile).sendStatus(200)
+        res.json(profile).status(200)
     }
     catch(e){
         res.json({message:"Error finding profile"}).status(404)
@@ -65,7 +65,8 @@ router.post('/update', isAuthenticated, async(req, res) => {
             email: body.email?body.email:result.email,
             phone_number: body.phone_number?body.phone_number:result.phone_number,
             location: body.location?body.location:result.location,
-            dob: body.dob?body.dob:result.dob
+            dob: body.dob?body.dob:result.dob,
+            image_url: body.image_url?body.image_url:result.image_url
             
         };
         const profile = await Profile.findOneAndUpdate({ _id: user.profileId }, newUser)

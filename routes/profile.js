@@ -4,6 +4,7 @@ var router = express.Router();
 const { isAuthenticated } = require('../middlewares/authMiddleware');
 const Profile = require("../models/Profile");
 const UserRegistration = require("../models/UserRegistration");
+const { Image } = require("../models/Image");
 
 
 
@@ -12,6 +13,8 @@ router.get('/', isAuthenticated, async(req, res) => {
     try{
         const user = await UserRegistration.findOne({username:username})
         const profile = await Profile.findOne({ _id: user.profileId })
+        const images = await Image.findOne({_id:profile.imageId})
+        profile.image_url = images.images
         res.json(profile).status(200)
     }
     catch(e){
@@ -27,6 +30,13 @@ router.post('/create', isAuthenticated, async (req, res) => {
     const body = req.body
 
     try {
+
+        const newImage = new Image({
+            username:username,
+            images:[]
+        })
+        const savedImage = await newImage.save();
+
         const newUser = new Profile({
             username: username,
             name: body.name,
@@ -36,8 +46,8 @@ router.post('/create', isAuthenticated, async (req, res) => {
             email: body.email?body.email:"",
             phone_number: body.phone_number?body.phone_number:"",
             location: body.location?body.location:"",
-            dob: body.dob?body.dob:""
-            
+            dob: body.dob?body.dob:"",
+            imageId:savedImage._id
         });
         const savedUser = await newUser.save();
         const user = await UserRegistration.findOneAndUpdate({username:username}, {profileId:savedUser._id})
@@ -66,8 +76,7 @@ router.post('/update', isAuthenticated, async(req, res) => {
             phone_number: body.phone_number?body.phone_number:result.phone_number,
             location: body.location?body.location:result.location,
             dob: body.dob?body.dob:result.dob,
-            image_url: body.image_url?body.image_url:result.image_url
-            
+            imageId: result.imageId
         };
         const profile = await Profile.findOneAndUpdate({ _id: user.profileId }, newUser)
         

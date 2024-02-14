@@ -23,8 +23,8 @@ const profileSchema = new mongoose.Schema({
     location: {
         type: String,
     },
-    image_url: {
-        type: Array,
+    imageId: {
+        type: String,
     },
     insta_id: {
         type: String,

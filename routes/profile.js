@@ -10,15 +10,29 @@ const { Image } = require("../models/Image");
 
 router.get('/', isAuthenticated, async(req, res) => {
     const username = req.username   
-    try{
-        const user = await UserRegistration.findOne({username:username})
-        const profile = await Profile.findOne({ _id: user.profileId })
-        const images = await Image.findOne({_id:profile.imageId})
-        profile.image_url = images.images
-        res.json(profile).status(200)
-    }
-    catch(e){
-        res.json({message:"Error finding profile"}).status(404)
+    try {
+        const user = await UserRegistration.findOne({ username: username });
+        if (!user) {
+            return res.json({ message: "User not found" }).status(404);
+        }
+        console.log("user", user);
+    
+        const profile = await Profile.findOne({ _id: user.profileId });
+        if (!profile) {
+            return res.json({ message: "Profile not found" }).status(404);
+        }
+        console.log("profile", profile);
+    
+        const images = await Image.findOne({ _id: profile.imageId });
+        console.log("image", images);
+    
+        if (images) {
+            profile.image_url = images.images;
+        }
+    
+        res.json(profile).status(200);
+    } catch (e) {
+        res.json({ message: "Error finding profile" }).status(404);
     }
 
 })
@@ -72,11 +86,12 @@ router.post('/update', isAuthenticated, async(req, res) => {
             description: body.description?body.description:result.description,
             gender: body.gender?body.gender:result.gender,
             insta_id: body.insta_id?body.insta_id:result.insta_id,
+            image_url: body.image_url?body.image_url:result.image_url,
             email: body.email?body.email:result.email,
             phone_number: body.phone_number?body.phone_number:result.phone_number,
             location: body.location?body.location:result.location,
             dob: body.dob?body.dob:result.dob,
-            imageId: result.imageId
+            imageId: body.imageId?body.imageId:result.imageId
         };
         const profile = await Profile.findOneAndUpdate({ _id: user.profileId }, newUser)
         

@@ -29,6 +29,9 @@ const profileSchema = new mongoose.Schema({
     insta_id: {
         type: String,
     },
+    image_url: {
+        type: Array,
+    },
     tags: {
         type: Object,
     },
